@@ -1,0 +1,898 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Data Filter</title>
+    <script type="text/javascript" src="js/jquery-1.11.0.min.js"></script>
+	<script type="text/javascript" src="js/d3.js"></script>
+    <script type="text/javascript" src="js/underscore-min.js"></script>
+	<script type="text/javascript" src="js/crossfilter.js"></script>
+	<script type="text/javascript" src="js/dc.js"></script>
+
+    <link href="css/bootstrap.css" rel="stylesheet" type="text/css" media="all"/>
+  <style>
+    body {
+        display: block;
+        margin: 0px;
+        overflow: hidden;
+        background: #3A3939;
+        padding: 0px;
+
+        text-align:center;
+        margin-left:auto;
+        margin-right:auto;
+        font-family: "Trebuchet MS", "Helvetica", "Arial",  "Verdana", "sans-serif";
+        font-size: 62.5%;
+    }
+
+
+    ul，li{ margin：0px；padding：0px；}
+    ul{padding-left:0;}
+
+    div.dc-chart {
+        float: left;
+    }
+
+    .dc-chart rect.bar {
+        stroke: none;
+        cursor: pointer;
+    }
+
+    .dc-chart rect.bar:hover {
+        fill-opacity: .5;
+    }
+
+    .dc-chart rect.stack1 {
+        stroke: none;
+        fill: red;
+    }
+
+    .dc-chart rect.stack2 {
+        stroke: none;
+        fill: green;
+    }
+
+    .dc-chart rect.deselected {
+        stroke: none;
+        fill: #ccc;
+    }
+
+    .dc-chart .empty-chart .pie-slice path {
+        fill: #FFEEEE;
+        cursor: default;
+    }
+
+    .dc-chart .empty-chart .pie-slice {
+        cursor: default;
+    }
+
+    .dc-chart .pie-slice {
+        fill: white;
+        font-size: 12px;
+        cursor: pointer;
+    }
+
+    .dc-chart .pie-slice.external{
+        fill: black;
+    }
+
+    .dc-chart .pie-slice :hover {
+        fill-opacity: .8;
+    }
+
+    .dc-chart .pie-slice.highlight {
+        fill-opacity: .8;
+    }
+
+    .dc-chart .selected path {
+        stroke-width: 3;
+        stroke: #ccc;
+        fill-opacity: 1;
+    }
+
+    .dc-chart .deselected path {
+        stroke: none;
+        fill-opacity: .5;
+        fill: #ccc;
+    }
+
+    .dc-chart .axis path, .axis line {
+        fill: none;
+        stroke: #000;
+        shape-rendering: crispEdges;
+    }
+
+    .dc-chart .axis text {
+        font: 10px sans-serif;
+    }
+
+    .dc-chart .grid-line {
+        fill: none;
+        stroke: #ccc;
+        opacity: .5;
+        shape-rendering: crispEdges;
+    }
+
+    .dc-chart .grid-line line {
+        fill: none;
+        stroke: #ccc;
+        opacity: .5;
+        shape-rendering: crispEdges;
+    }
+
+    .dc-chart .brush rect.background {
+        z-index: -999;
+    }
+
+    .dc-chart .brush rect.extent {
+        fill: steelblue;
+        fill-opacity: .125;
+    }
+
+    .dc-chart .brush .resize path {
+        fill: #eee;
+        stroke: #666;
+    }
+
+    .dc-chart path.line {
+        fill: none;
+        stroke-width: 1.5px;
+    }
+
+    .dc-chart circle.dot {
+        stroke: none;
+    }
+
+    .dc-chart g.dc-tooltip path {
+        fill: none;
+        stroke: grey;
+        stroke-opacity: .8;
+    }
+
+    .dc-chart path.area {
+        fill-opacity: .3;
+        stroke: none;
+    }
+
+    .dc-chart .node {
+        font-size: 0.7em;
+        cursor: pointer;
+    }
+
+    .dc-chart .node :hover {
+        fill-opacity: .8;
+    }
+
+    .dc-chart .selected circle {
+        stroke-width: 3;
+        stroke: #ccc;
+        fill-opacity: 1;
+    }
+
+    .dc-chart .deselected circle {
+        stroke: none;
+        fill-opacity: .5;
+        fill: #ccc;
+    }
+
+    .dc-chart .bubble {
+        stroke: none;
+        fill-opacity: 0.6;
+    }
+
+    .dc-data-count {
+        float: right;
+        margin-top: 15px;
+        margin-right: 15px;
+    }
+
+    .dc-data-count .filter-count {
+        color: #3182bd;
+        font-weight: bold;
+    }
+
+    .dc-data-count .total-count {
+        color: #3182bd;
+        font-weight: bold;
+    }
+
+    .dc-data-table {
+    }
+
+    .dc-chart g.state {
+        cursor: pointer;
+    }
+
+    .dc-chart g.state :hover {
+        fill-opacity: .8;
+    }
+
+    .dc-chart g.state path {
+        stroke: white;
+    }
+
+    .dc-chart g.selected path {
+    }
+
+    .dc-chart g.deselected path {
+        fill: grey;
+    }
+
+    .dc-chart g.selected text {
+    }
+
+    .dc-chart g.deselected text {
+        display: none;
+    }
+
+    .dc-chart g.county path {
+        stroke: white;
+        fill: none;
+    }
+
+    .dc-chart g.debug rect {
+        fill: blue;
+        fill-opacity: .2;
+    }
+
+    .dc-chart g.row rect {
+        fill-opacity: 0.8;
+        cursor: pointer;
+    }
+
+    .dc-chart g.row rect:hover {
+        fill-opacity: 0.6;
+    }
+
+    .dc-chart g.row text {
+        fill: white;
+        font-size: 12px;
+        cursor: pointer;
+    }
+
+    .dc-legend {
+        font-size: 11px;
+    }
+
+    .dc-legend-item {
+        cursor: pointer;
+    }
+
+    .dc-chart g.axis text {
+        /* Makes it so the user can't accidentally click and select text that is meant as a label only */
+        -webkit-user-select: none; /* Chrome/Safari */
+        -moz-user-select: none; /* Firefox */
+        -ms-user-select: none; /* IE10 */
+        -o-user-select: none;
+        user-select: none;
+        pointer-events: none;
+    }
+
+    .dc-chart path.highlight {
+        stroke-width: 3;
+        fill-opacity: 1;
+        stroke-opacity: 1;
+    }
+
+    .dc-chart .highlight {
+        fill-opacity: 1;
+        stroke-opacity: 1;
+    }
+
+    .dc-chart .fadeout {
+        fill-opacity: 0.2;
+        stroke-opacity: 0.2;
+    }
+
+    .dc-chart path.dc-symbol, g.dc-legend-item.fadeout {
+        fill-opacity: 0.5;
+        stroke-opacity: 0.5;
+    }
+
+    .dc-hard .number-display {
+        float: none;
+    }
+
+    .dc-chart .box text {
+        font: 10px sans-serif;
+        -webkit-user-select: none; /* Chrome/Safari */
+        -moz-user-select: none; /* Firefox */
+        -ms-user-select: none; /* IE10 */
+        -o-user-select: none;
+        user-select: none;
+        pointer-events: none;
+    }
+
+    .dc-chart .box line,
+    .dc-chart .box circle {
+        fill: #fff;
+        stroke: #000;
+        stroke-width: 1.5px;
+    }
+
+    .dc-chart .box rect {
+        stroke: #000;
+        stroke-width: 1.5px;
+    }
+
+    .dc-chart .box .center {
+        stroke-dasharray: 3,3;
+    }
+
+    .dc-chart .box .outlier {
+        fill: none;
+        stroke: #ccc;
+    }
+
+    .dc-chart .box.deselected .box {
+        fill: #ccc;
+    }
+
+    .dc-chart .box.deselected {
+        opacity: .5;
+    }
+
+    .dc-chart .symbol{
+        stroke: none;
+    }
+
+    .dc-chart .heatmap .box-group.deselected rect {
+        stroke: none;
+        fill-opacity: .5;
+        fill: #ccc;
+    }
+
+    .dc-chart .heatmap g.axis text {
+        pointer-events: all;
+        cursor: pointer;
+    }
+    .dc-chart g.row text {
+    	fill: white;
+    	font-size: 10px;
+    }
+
+    .dc-chart .axis path, .axis line {
+        fill: none;
+        stroke: #FFF;
+        shape-rendering: crispEdges;
+    }
+
+    .dc-chart .axis text {
+        fill: white;
+        font: 10px sans-serif;
+    }
+    .dc-legend {
+        fill: white;
+        font-size: 11px;
+    }
+    .d3-tip {
+      line-height: 1;
+      font-weight: bold;
+      padding: 12px;
+      background: rgba(0, 0, 0, 0.8);
+      color: #fff;
+      border-radius: 2px;
+      -webkit-transition: opacity 0.3s; /* For Safari 3.1 to 6.0 */
+      transition: opacity 0.3s;  
+    text-align: left; 
+    }
+
+    /* Creates a small triangle extender for the tooltip */
+    .d3-tip:after {
+      box-sizing: border-box;
+      display: inline;
+      font-size: 10px;
+      width: 100%;
+      line-height: 1;
+      color: rgba(0, 0, 0, 0.8);
+      content: "\25BC";
+      position: absolute;
+      text-align: left;
+    }
+
+    /* Style northward tooltips differently */
+    .d3-tip.n:after {
+      margin: -1px 0 0 0;
+      top: 100%;
+      left: 0;
+    }
+  </style>
+  
+</head>
+<body >
+<div id='container'>
+    <div class='col-md-9'>
+        <div class='row'>
+            
+            <div id="mapwhat" ></div>
+        </div>
+		<div id='mychars' class='row'>
+            <div id="day-of-year-chart" style="color:white" >
+                <h6 style="line-height:0.5">Casualty Total By Year 
+                    <a class="reset" href="javascript:dayOfYearChart.filterAll();dc.redrawAll();" style="display: none;color:red">reset</a>
+                    <div class="clearfix"></div>
+                </h6>
+            </div>
+    		<div id="day-of-month-chart" style="color:white" >
+    			<h6 style="line-height:0.5">Casualty Total By Month
+    				<a class="reset" href="javascript:dayOfMonthChart.filterAll();dc.redrawAll();" style="display: none;color:red">reset</a>
+    				<div class="clearfix"></div>
+                </h6>
+    		</div>
+    		<div id="day-of-week-chart" style="color:white">
+                <h6 style="line-height:0.5">Casualty Total By Weekday
+    				<a class="reset" href="javascript:dayOfWeekChart.filterAll();dc.redrawAll();" style="display: none;color:red">reset</a>
+    				<div class="clearfix"></div>
+    			</h6>
+    		</div>
+    		<div id="day-of-hour-chart" style="color:white">
+    			<h6 style="line-height:0.5">Casualty Total By Hour
+    				<a class="reset" href="javascript:dayofHourChart.filterAll();dc.redrawAll();" style="display: none;color:red">reset</a>
+    				<div class="clearfix"></div>
+    			</h6>
+    		</div>
+    		<div id="speed-limit-chart" style="color:white">
+    			<h6 style="line-height:0.5">Casualty Total By Speed Limit
+    				<a class="reset" href="javascript:speedlimitChart.filterAll();dc.redrawAll();" style="display: none;color:red">reset</a>
+    				<div class="clearfix"></div>
+    			</h6>
+    		</div>
+				
+		</div>
+		<div class='row'>
+			<div  id="monthly-move-chart" style="color:white;">
+				<h6 style="line-height:0.5">Casualty Lines
+					<span class="reset" style="display: none;">range: <span class="filter"></span></span>
+					<a class="reset" href="javascript:moveChart.filterAll();volumeChart.filterAll();dc.redrawAll();"
+           										style="display: none;color:red">reset</a>
+					<div class="clearfix"></div>
+				</h6>
+			</div>
+		</div>
+		<div class='row'>
+			<div  id="monthly-volume-chart" style="color:white;"></div>
+			<div class="clearfix"> </div>
+		</div>
+		
+	</div>
+	<div id="textShow" class='col-md-3' style='color:white;border-left:1px solid #AAAAAA;height:100%'>
+        <h4>instructions：</h4><br>
+            <h5>
+			1.the first layer defines the world map, the map can be zoomed and dragged, but also by changing the name of the loaded map data; the point color on the map is defined by the type; the mouse is placed in different areas of the map, highlighting, Put on the markup point will show the tooltip which is used to show the certain region name and crash type.<br>
+            <br>
+            2.The second level is the statistics by year, month, hour and day of the week. The quantity is the total value. Each of them can be clicked and filtered. After clicking on the title, reset will appear. The filter can be reset. At the same time with click the pie and column diagram. the mark points on the map and the line charts below will be filtered together.<br>
+            <br>
+            3.The line chart shows different types. There are legends next to it. The mouse will highlight the line on the legend. The line chart can be dragged to zoom in or zoom out. When you zoom in and zoom out, the time range will change. The data on other graphs will also follow. Change together.<br>
+            <br>
+            4.The timeline chart shows the value of the total attribute, which can be selected on the timeline. The other data will change along with the selection.
+        </h5>
+		
+	</div> 
+</div> 
+<script type="text/javascript">
+    var widowHeight=window.innerHeight;
+    
+    var chartheight = widowHeight*0.45*0.3;
+    
+
+    /*Define the image variable name*/
+    var dayOfYearChart = dc.pieChart('#day-of-year-chart');
+    var dayOfWeekChart = dc.rowChart('#day-of-week-chart');
+    var dayOfMonthChart = dc.rowChart('#day-of-month-chart');
+    var dayofHourChart = dc.pieChart('#day-of-hour-chart');
+    var speedlimitChart = dc.pieChart('#speed-limit-chart');
+    var moveChart = dc.compositeChart('#monthly-move-chart');
+    var volumeChart = dc.barChart('#monthly-volume-chart');
+    var width=$('#mychars').width();
+    var mapheight = window.innerHeight*0.5;
+    var mapwidth = width;
+    /*Set the map height and the heigh of right bar*/
+    $('#textShow').css('height',widowHeight+'px');
+    $('#mapwhat').css('height',mapheight+'px');
+
+    //Define a time date format used to be convered
+    var dateFormat = d3.time.format('%Y%m');
+    var numberFormat = d3.format('.2f');
+
+    var monthlist = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    //Define the colour of map coordinate point.
+    var typedict = {"Hit pedestrian":"#3182bd","Multi-Vehicle":"#e6550d","Other":"#31a354","Single Vehicle":"#756bb1"};
+
+    //used to read the map.topojson 
+    d3.json("world.json",function(error,mapdata)  
+    {  
+        //draw a map
+        var svg = d3.select('#mapwhat').append('svg');
+        var g = svg.append("g");
+        /* In order to may the map more clear to show, I omit the region of Antarctica */
+        var features = _.filter(mapdata.features, function(value, key) {
+            return value.properties.name != 'Antarctica';
+        });
+        //define a Mercator projection to let Latitude and longitude onto a flat Web interface
+        var projection = d3.geo.mercator();
+        //define a variable to set the scale of Mercator projection
+        var oldScala = projection.scale();
+        //define a varable to set zoom and translate
+        var oldTranslate = projection.translate();
+        //configure the scale and the position of projection area 
+        xy = projection.scale(oldScala * (width / oldTranslate[0] / 2)*0.9)
+         .translate([mapwidth / 2, mapheight / 2]);
+      
+        path = d3.geo.path().projection(xy);//draw the line of map
+        svg.attr('width', mapwidth).attr('height', mapheight);
+        g.attr('width', mapwidth).attr('height', mapheight);
+        var provinces = g.selectAll('path').data(features).enter().append('g:path')
+            .attr('d', path)
+            .on('mouseover', function(data) {
+                //when mouse moving to the certain place, it will highlight this part
+                d3.select(this).attr('fill', '#888888');//get the gray colour
+            })
+            .on('mouseout', function(data) {
+                //when the mouse moving out of the certain place, the colour will come back to the original.
+                d3.select(this).attr('fill', '#666666');
+            })
+            .attr('fill', '#666666')//set the original colour
+            .attr('stroke', '#AAAAAA')
+            .attr('stroke-width', 0.5);//set The thickness of the line
+
+        
+        // zoom and pan, map can be enlarge and shrink as well as draging
+        var zoom = d3.behavior.zoom()//define the zoom
+            .on("zoom",function() {
+                g.attr("transform","translate("+ 
+                    d3.event.translate.join(",")+")scale("+d3.event.scale+")");
+                g.selectAll("path")  
+                    .attr("d", path.projection(projection)); 
+
+        });
+
+        svg.call(zoom);
+        //Map finished
+
+        //read the data of csv file 
+        d3.csv("locations-do-3.csv",function(error,data)  
+        {  
+
+            //Convert time types and calculate various types of statistic results
+            data.forEach(function (d) {
+                //formate the data which is acceptable to D3
+                d.dd = dateFormat.parse(d.Crash_Date);
+                //formate the month which is acceptable to D3
+                d.month = d3.time.month(d.dd);
+                //count the total number of all factors which will be used in visualisation
+                d.Count_Casualty_Fatality = +d.Count_Casualty_Fatality;
+                d.Count_Casualty_Hospitalised = +d.Count_Casualty_Hospitalised;
+                d.Count_Casualty_MedicallyTreated = +d.Count_Casualty_MedicallyTreated;
+                d.Count_Casualty_MinorInjury = +d.Count_Casualty_MinorInjury;
+                d.Count_Casualty_Total = +d.Count_Casualty_Total;
+            });
+
+            //load the data in crossfilter，used to filtered.
+            var ndx = crossfilter(data);
+            var all = ndx.groupAll();//不懂
+        	
+            
+            var moveMonths = ndx.dimension(function (d) {
+                return d.month;
+            });
+
+            //statistics by year
+            var dayOfYear = ndx.dimension(function (d) {
+                return d.Crash_Year;
+            });
+
+            //calculate the annual statistics of casualty_total 
+            var dayOfYearGroup = dayOfYear.group().reduceSum(function (d) {
+                return d.Count_Casualty_Total;
+            });
+
+            //statistics by month
+            var dayOfMonth = ndx.dimension(function (d) {
+                return d.Crash_Month;
+            });
+
+            //calculate the statistics of casualty_total by month
+            var dayOfMonthGroup = dayOfMonth.group().reduceSum(function (d) {
+                return d.Count_Casualty_Total;
+            });
+
+            //statistics by hour
+            var dayOfHour = ndx.dimension(function (d) {
+                return d.Crash_Hour;
+            });
+
+            //calculate the statistics of casualty_total by hour
+            var dayOfHourGroup = dayOfHour.group().reduceSum(function (d) {
+                return d.Count_Casualty_Total;
+            });
+             
+            //statistics by week 
+            var dayOfWeek = ndx.dimension(function (d) {
+                return d.Crash_Day_Of_Week;
+            });
+
+            //calculate the statistics of casualty_total by the certain week day
+            var dayOfWeekGroup = dayOfWeek.group().reduceSum(function (d) {
+                return d.Count_Casualty_Total;
+            });
+
+            //statistics by car speed
+            var dayOfSpeed = ndx.dimension(function (d) {
+                return d.Crash_Speed_Limit;
+            });
+
+            //calculate the statistics of casualty_total by car speed
+            var dayOfSpeedGroup = dayOfSpeed.group().reduceSum(function (d) {
+                return d.Count_Casualty_Total;
+            });
+
+            
+            var amountByMonth = ndx.dimension(function(d) {
+        	 var day = d.dd.getMonth();
+                return day; 
+        	});
+            //calculate the statistics of casualty_total by month
+            var volumeByMonthGroup = moveMonths.group().reduceSum(function (d) {
+                
+                return d.Count_Casualty_Total;
+            });
+
+            //statistics different types of casualty(fatality, hispitslised, medicallytreat etc) by year and month
+            var amountTotalByMonth = moveMonths.group().reduceSum(function(d) { return d.Count_Casualty_Total; });
+
+            var MonthFatalityGroup = moveMonths.group().reduceSum(function (d) { return d.Count_Casualty_Fatality; });
+
+            var MonthHospitalisedGroup = moveMonths.group().reduceSum(function (d) { return d.Count_Casualty_Hospitalised; });
+
+            var MonthMedicallyTreatedGroup = moveMonths.group().reduceSum(function (d) { return d.Count_Casualty_MedicallyTreated; });
+
+            var MonthMinorInjuryGroup = moveMonths.group().reduceSum(function (d) { return d.Count_Casualty_MinorInjury; });
+
+            //draw an scatter diagram on the map
+            var marker = g.selectAll("circle")
+               .data(data)
+               .enter()
+               .append("circle")
+               .attr({"class": "marker"})
+                //set radius
+               .attr('r', function(d) { return 2;})
+                //set the axias of circle
+               .attr("cx", function(d) {
+                       return xy([d.Crash_Longitude_GDA94, d.Crash_Latitude_GDA94])[0];
+               })
+                //set the axias of circle
+               .attr("cy", function(d) {
+                       return xy([d.Crash_Longitude_GDA94, d.Crash_Latitude_GDA94])[1];
+               })
+                //set the colour of different casualty type by colour
+               .attr('fill', function(d,i){return typedict[d.Crash_Type];})
+                //set the level of opacity
+               .style('opacity', 0.5)
+               .append("title").text(function(d){
+                    //set a tooltip function, and show the certain result when mouse moving to the certin place
+                    return 'Crash_Type:'+d.Crash_Type+'\nLoc_ABS_Statistical_Area:'+d.Loc_ABS_Statistical_Area_4+'\nLoc_Federal_Electorate:'+d.Loc_Federal_Electorate;
+                });
+
+            
+
+            //draw graph based on year and staistic the casualty_total
+            dayOfYearChart 
+                .width(width/5)
+                .height(chartheight)
+                .radius(d3.min(width/8-2,48))
+                .group(dayOfYearGroup)
+                .dimension(dayOfYear)
+                .label(function (d) {
+                    return d.key;
+                })
+                .on("filtered", function(c,f){
+                
+                    updateGraph();
+                })
+                // Title sets the row text
+                .title(function (d) {
+
+                    return d.key+':'+d.value;
+                });
+
+
+            //draw graph based on the certain weekday and staistic the casualty_total
+            dayOfWeekChart 
+                .width(width/5)
+                .height(chartheight)
+                .margins({top: 0, left: 10, right: 10, bottom: 20})
+                .group(dayOfWeekGroup)
+                .dimension(dayOfWeek)
+                //Assign colors to each value in the x scale domain
+                .ordinalColors(["#a6cee3","#1f78b4","#b2df8a","#33a02c","#fb9a99","#e31a1c","#fdbf6f"])
+                .label(function (d) {
+                    return d.key;
+                })
+                // Title sets the row text
+                .title(function (d) {
+
+                    return d.key+':'+d.value;
+                })
+                .on("filtered", function(c,f){
+                
+                    updateGraph();
+                })
+                .elasticX(true)
+                .xAxis().ticks(4);
+
+            //draw graph based on the certain month and staistic the casualty_total
+            dayOfMonthChart 
+                .width(width/5)
+                .height(chartheight)
+                .margins({top: 0, left: 10, right: 10, bottom: 20})
+                .group(dayOfMonthGroup)
+                .dimension(dayOfMonth)
+                //Assign colors to each value in the x scale domain
+                //use ordinal scale to matche colour with day of month
+                .ordinalColors(["#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3","#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd","#ccebc5","#ffed6f"])
+                 .label(function (d) {
+                    return d.key;
+                })
+                 .on("filtered", function(c,f){
+                
+                    updateGraph();
+                })
+                // Title sets the row text
+                .title(function (d) {
+                    return d.key+':'+d.value;
+                })
+                .elasticX(true)
+                .xAxis().ticks(2);
+
+            //draw graph based on the certain hour and staistic the casualty_total
+            dayofHourChart 
+                .width(width/5)
+                .height(chartheight)
+                .radius(d3.min(width/8-2,48))
+                .group(dayOfHourGroup)
+                .dimension(dayOfHour)
+                .label(function (d) {
+                    return d.key;
+                })
+                .on("filtered", function(c,f){
+                
+                    updateGraph();
+                })
+                // Title sets the row text
+                .title(function (d) {
+                    return d.key+':'+d.value;
+                });
+
+            //draw graph based on the certain speed and staistic the casualty_total
+            speedlimitChart 
+                .width(width/5)
+                .height(chartheight)
+                .radius(d3.min(width/8-2,48))
+                .group(dayOfSpeedGroup)
+                .dimension(dayOfSpeed)
+                .label(function (d) {
+                    return d.key;
+                })
+                .on("filtered", function(c,f){
+                
+                    updateGraph();
+                })
+                // Title sets the row text
+                .title(function (d) {
+                    return d.key+':'+d.value;
+                });
+            
+            //get the smallest time and date.
+            var mindate=d3.min(data, function(d) { return d.Crash_Date; });
+            var maxdate=d3.max(data, function(d) { return d.Crash_Date; });
+            //this line of code used to check: console.log(d3.time.month.round);
+            moveChart 
+                .width(width)
+                .height(chartheight)
+                .transitionDuration(500)
+                .margins({top: 0, right: 50, bottom: 20, left: 50})
+                .dimension(moveMonths)
+                
+                .mouseZoomable(true)
+                .rangeChart(volumeChart)
+                .x(d3.time.scale().domain([new Date(mindate.substr(0, 4), mindate.substr(4, 2)-1, 1), new Date(maxdate.substr(0, 4), maxdate.substr(4, 2)-1, 31)]))
+                .round(d3.time.month.round)
+                .xUnits(d3.time.months)
+                .elasticY(true)
+                .renderHorizontalGridLines(true)
+                .legend(dc.legend().x(width-50).y(4).itemHeight(7).gap(4))
+                .brushOn(false)
+                .title(function (d) {
+                	return dateFormat(d.key)+':'+d.value;
+                })
+                .on("filtered", function(c,f){
+                
+                    updateGraph();
+                })
+                .compose([
+                                    //draw line chart
+                                    dc.lineChart(moveChart)
+                                            .group(amountTotalByMonth, "Total")
+                                            .colors("white")
+                                            .valueAccessor(function (d) {
+                                                return d.value;
+                                            }),
+        		    				
+                                    dc.lineChart(moveChart)
+                                        .group(MonthFatalityGroup, "Fatality")
+                                        .colors("#00aa55")
+                                        .valueAccessor(function (d) {
+                                            return d.value;
+                                        }),
+
+                                    dc.lineChart(moveChart)
+                                            .group(MonthHospitalisedGroup, "Hospitalised")
+                                            .colors("#1f78b4")
+                                            .valueAccessor(function (d) {
+                                                return d.value;
+                                            }),
+
+                                    dc.lineChart(moveChart)
+                                            .group(MonthMedicallyTreatedGroup, "MedicallyTreated")
+                                            .colors("#fdbf6f")
+                                            .valueAccessor(function (d) {
+                                                return d.value;
+                                            }),
+
+                                    dc.lineChart(moveChart)
+                                            .group(MonthMinorInjuryGroup, "MinorInjury")
+                                            .colors("#fb9a99")
+                                            .valueAccessor(function (d) {
+                                                return d.value;
+                                            })
+                                    
+                     
+                                    
+                        ]);
+                
+            //Draw a Timeline statistic column chart that you can use to filter time periods
+            volumeChart.width(width)
+                .height(chartheight)
+                .margins({top: 0, right: 50, bottom: 20, left: 50})
+                .dimension(moveMonths)
+                .group(volumeByMonthGroup)
+                .gap(1)
+                .x(d3.time.scale().domain([new Date(mindate.substr(0, 4), mindate.substr(4, 2)-1, 1), new Date(maxdate.substr(0, 4), maxdate.substr(4, 2)-1, 31)]))
+                .round(d3.time.month.round)
+                .alwaysUseRounding(true)
+                .on("filtered", function(c,f){
+                
+                    updateGraph();
+                })
+                .xUnits(d3.time.months).yAxis().ticks(0);
+
+
+            //Sync Update Point coordinates when clicking Filter
+            function updateGraph(){
+
+                d3.selectAll(".marker")
+                    .style("display", "none");
+                                        
+                d3.selectAll(".marker")
+                    .data(moveMonths.top(Infinity))
+                    .attr("cx", function(d) {
+                        return xy([d.Crash_Longitude_GDA94, d.Crash_Latitude_GDA94])[0];
+                    })
+                    .attr("cy", function(d) {
+                        return xy([d.Crash_Longitude_GDA94, d.Crash_Latitude_GDA94])[1];
+                    })
+                    .style("display", "inline")
+                                        
+            };
+
+            dc.renderAll();
+            
+            
+
+        });
+    });
+</script>
+
+ 
+</body>
+</html>
